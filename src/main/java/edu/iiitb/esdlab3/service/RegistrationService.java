@@ -35,14 +35,23 @@ public class RegistrationService {
                         RegistrationStatus.ACTIVE
                 );
 
-        if (activeCount > event.getCapacity()) {
+        if (activeCount >= event.getCapacity()) {
             throw new EventFullException();
         }
 
         String email = request.getStudentEmail()
                 .trim()
                 .toLowerCase(Locale.ROOT);
+        boolean alreadyRegistered = registrationRepository
+        .existsByEvent_IdAndStudentEmailIgnoreCaseAndStatus(
+                eventId,
+                email,
+                RegistrationStatus.ACTIVE
+        );
 
+if (alreadyRegistered) {
+    throw new DuplicateRegistrationException();
+}
         // Intentionally missing duplicate-registration check.
         return registrationRepository.save(
                 new Registration(
@@ -55,19 +64,21 @@ public class RegistrationService {
 
     public List<Registration> activeForEvent(Long eventId) {
         eventService.get(eventId);
-        return registrationRepository.findActiveByEventId(eventId);
+        return registrationRepository.findActiveByEventId(eventId,
+        RegistrationStatus.ACTIVE);
     }
 
-    @Transactional
-    public void cancel(Long registrationId) {
-        Registration registration = registrationRepository
-                .findById(registrationId)
-                .orElseThrow(
-                        () -> new RegistrationNotFoundException(registrationId)
-                );
+    
+@Transactional
+public void cancel(Long registrationId) {
+    Registration registration = registrationRepository
+            .findById(registrationId)
+            .orElseThrow(
+                    () -> new RegistrationNotFoundException(registrationId)
+            );
 
-        if (registration.getStatus() == RegistrationStatus.CANCELLED) {
-            registration.setStatus(RegistrationStatus.CANCELLED);
-        }
+    if (registration.getStatus() == RegistrationStatus.ACTIVE) {
+        registration.setStatus(RegistrationStatus.CANCELLED);
     }
+}
 }
